@@ -29,9 +29,86 @@ def clean_response(text):
 
 @app.route('/')
 def home():
-    # Read the HTML file directly from root directory
-    with open('index.html', 'r') as f:
-        return f.read()
+    # Return HTML directly
+    return '''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Hong Kong Employment Law Assistant</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+            .chat-container { border: 1px solid #ddd; height: 400px; overflow-y: auto; padding: 10px; margin: 10px 0; }
+            .input-container { display: flex; gap: 10px; }
+            input[type="text"] { flex: 1; padding: 10px; }
+            button { padding: 10px 20px; background: #007cba; color: white; border: none; cursor: pointer; }
+            .message { margin: 10px 0; padding: 10px; border-radius: 5px; }
+            .user-message { background: #e3f2fd; text-align: right; }
+            .bot-message { background: #f5f5f5; }
+        </style>
+    </head>
+    <body>
+        <h1>Hong Kong Employment Law Assistant</h1>
+        <p>Ask me about your employment rights in Hong Kong!</p>
+        
+        <div id="chatContainer" class="chat-container"></div>
+        
+        <div class="input-container">
+            <input type="text" id="questionInput" placeholder="Ask your employment law question..." />
+            <button onclick="askQuestion()">Ask</button>
+        </div>
+
+        <script>
+            async function askQuestion() {
+                const input = document.getElementById('questionInput');
+                const question = input.value.trim();
+                if (!question) return;
+
+                const chatContainer = document.getElementById('chatContainer');
+                
+                // Add user message
+                chatContainer.innerHTML += `<div class="message user-message"><strong>You:</strong> ${question}</div>`;
+                input.value = '';
+                
+                // Add loading message
+                chatContainer.innerHTML += `<div class="message bot-message" id="loading"><strong>Assistant:</strong> Thinking...</div>`;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                try {
+                    const response = await fetch('/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question: question })
+                    });
+
+                    const data = await response.json();
+                    
+                    // Remove loading message
+                    document.getElementById('loading').remove();
+                    
+                    // Add response
+                    const responseText = data.response || data.error || 'Sorry, I could not process your question.';
+                    chatContainer.innerHTML += `<div class="message bot-message"><strong>Assistant:</strong> ${responseText.replace(/\\n/g, '<br>')}</div>`;
+                    
+                } catch (error) {
+                    document.getElementById('loading').remove();
+                    chatContainer.innerHTML += `<div class="message bot-message"><strong>Assistant:</strong> Sorry, I encountered an error: ${error.message}</div>`;
+                }
+                
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            // Allow Enter key to submit
+            document.getElementById('questionInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    askQuestion();
+                }
+            });
+        </script>
+    </body>
+    </html>
+    '''
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
