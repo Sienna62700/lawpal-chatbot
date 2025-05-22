@@ -26,8 +26,8 @@ def clean_response(text):
     text = re.sub(r'\[\[[0-9]+\]\]\([^)]+\)', '', text)
     
     # Convert markdown to HTML for proper formatting
-html_text = markdown.markdown(text, extensions=['markdown.extensions.nl2br'])
-return html_text
+    html_text = markdown.markdown(text, extensions=['markdown.extensions.nl2br'])
+    return html_text
 
 @app.route('/')
 def home():
