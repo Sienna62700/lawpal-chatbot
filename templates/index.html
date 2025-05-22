@@ -109,6 +109,36 @@
             color: #2c3e50;
         }
 
+        /* NEW: Add better formatting for lists and bold text in bot messages */
+        .bot-message ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .bot-message ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .bot-message li {
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+
+        .bot-message strong {
+            font-weight: 600;
+            color: #1a365d;
+        }
+
+        .bot-message p {
+            margin: 8px 0;
+        }
+
+        .bot-message h1, .bot-message h2, .bot-message h3, .bot-message h4 {
+            margin: 12px 0 8px 0;
+            color: #1a365d;
+        }
+
         .user-input {
             display: flex;
             padding: 20px;
@@ -451,16 +481,23 @@
             });
 
             // Function to add messages to the chat
-            function addMessage(message, isUser = false) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('message');
-                messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
-                messageDiv.textContent = message;
-                chatMessages.appendChild(messageDiv);
-                
-                // Scroll to the bottom of the chat
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
+          function addMessage(message, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+    
+    // Use innerHTML for bot messages to render HTML, textContent for user messages
+    if (isUser) {
+        messageDiv.textContent = message; // Keep user messages as plain text for security
+    } else {
+        messageDiv.innerHTML = message; // Render bot messages as HTML
+    }
+    
+    chatMessages.appendChild(messageDiv);
+    
+    // Scroll to the bottom of the chat
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
             // Add typing indicator
             function showTypingIndicator() {

@@ -25,7 +25,9 @@ def clean_response(text):
     # Remove citation links like [[3]](https://poe.com/citation?message_id=17477466721405625253&citation=3)
     text = re.sub(r'\[\[[0-9]+\]\]\([^)]+\)', '', text)
     
-    return text
+    # Convert markdown to HTML for proper formatting
+html_text = markdown.markdown(text, extensions=['markdown.extensions.nl2br'])
+return html_text
 
 @app.route('/')
 def home():
