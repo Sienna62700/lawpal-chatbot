@@ -115,5 +115,11 @@ def ask_question():
         return jsonify({"error": "An unexpected error occurred"}), 500
 
 if __name__ == '__main__':
-    # Run the Flask app
-    app.run(debug=True, host='localhost', port=8888)
+    import os
+    # Use PORT environment variable for Railway, fallback to 8888 for local development
+    port = int(os.environ.get('PORT', 8888))
+    # Use 0.0.0.0 to accept external connections, localhost only works locally
+    host = '0.0.0.0' if 'PORT' in os.environ else 'localhost'
+    debug = 'PORT' not in os.environ  # Debug mode only when running locally
+    
+    app.run(debug=debug, host=host, port=port)
