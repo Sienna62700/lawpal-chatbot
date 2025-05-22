@@ -13,7 +13,7 @@ app = Flask(__name__)
 
 # Get API key from environment variable
 POE_API_KEY = os.getenv("POE_API_KEY")
-POE_BOT_NAME = os.getenv("POE_BOT_NAME", "EmploymentLawHK")  # CHANGED THIS LINE
+POE_BOT_NAME = os.getenv("POE_BOT_NAME", "EmploymentLawHK")
 
 # Print configuration details
 print("=== APP CONFIGURATION ===")
@@ -29,9 +29,9 @@ def clean_response(text):
 
 @app.route('/')
 def home():
-# Read the HTML file directly from root directory
-with open('index.html', 'r') as f:
-    return f.read()
+    # Read the HTML file directly from root directory
+    with open('index.html', 'r') as f:
+        return f.read()
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
