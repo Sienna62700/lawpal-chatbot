@@ -13,34 +13,44 @@ app = Flask(__name__)
 
 # Get API key from environment variable
 POE_API_KEY = os.getenv("POE_API_KEY")
-POE_BOT_NAME = os.getenv("POE_BOT_NAME", "EmploymentRightsBot")  # Default to your bot name
+POE_BOT_NAME = os.getenv("POE_BOT_NAME", "EmploymentLawHK")
 
 # Print configuration details
 print("=== APP CONFIGURATION ===")
 print(f"API Key configured: {'Yes' if POE_API_KEY else 'No'}")
-print(f"Bot Name: {POE_BOT_NAME}")
+print(f"API Key (first 10 chars): {POE_API_KEY[:10] if POE_API_KEY else 'None'}")
+print(f"Bot Name: '{POE_BOT_NAME}'")
 
 def clean_response(text):
     """Clean the response text by removing citations and fixing formatting"""
-    # Remove citation links like [[3]](https://poe.com/citation?message_id=17477466721405625253&citation=3)
     text = re.sub(r'\[\[[0-9]+\]\]\([^)]+\)', '', text)
-    
     return text
 
 @app.route('/')
 def home():
-# Read the HTML file directly from root directory
-with open('index.html', 'r') as f:
-    return f.read()
+    with open('index.html', 'r') as f:
+        return f.read()
+
+@app.route('/debug-config')
+def debug_config():
+    """Debug endpoint to see exactly what configuration is being used"""
+    return jsonify({
+        "bot_name": POE_BOT_NAME,
+        "api_key_configured": bool(POE_API_KEY),
+        "api_key_first_10": POE_API_KEY[:10] if POE_API_KEY else None,
+        "api_key_length": len(POE_API_KEY) if POE_API_KEY else 0,
+        "environment_variables": {
+            "POE_BOT_NAME": os.getenv("POE_BOT_NAME"),
+            "POE_API_KEY_SET": bool(os.getenv("POE_API_KEY"))
+        }
+    })
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
     """Process user questions and return responses from Poe API"""
     try:
-        # Get the question from the request
         data = request.get_json()
         
-        # Check if data and question exist
         if not data:
             return jsonify({"error": "No data provided"}), 400
             
@@ -48,29 +58,33 @@ def ask_question():
         if not question:
             return jsonify({"error": "No question provided"}), 400
         
-        # Check if API key is configured
         if not POE_API_KEY:
             return jsonify({"error": "API key not configured"}), 500
         
-        print(f"Processing question: {question}")
+        print(f"=== PROCESSING QUESTION ===")
+        print(f"Question: {question}")
+        print(f"Using bot: '{POE_BOT_NAME}'")
+        print(f"API key starts with: {POE_API_KEY[:10]}...")
+        print(f"API key length: {len(POE_API_KEY)}")
         
         # Create a message using fastapi_poe's ProtocolMessage
         message = fp.ProtocolMessage(role="user", content=question)
         
         try:
-            # Use the synchronous version for simplicity
+            print("Attempting to connect to Poe API...")
+            
+            # Try to get bot response
             all_partials = list(fp.get_bot_response_sync(
                 messages=[message], 
                 bot_name=POE_BOT_NAME, 
                 api_key=POE_API_KEY
             ))
             
-            # Get only the final response (last element in the list)
-            # This avoids concatenating partial streaming responses
+            print(f"Success! Received {len(all_partials)} partial responses")
+            
             if all_partials:
                 final_response = all_partials[-1]
                 
-                # Extract the text from the response
                 if hasattr(final_response, 'text'):
                     response_text = final_response.text
                 elif hasattr(final_response, 'content'):
@@ -78,49 +92,51 @@ def ask_question():
                 else:
                     response_text = str(final_response)
                 
-                # Clean up the response to remove citations and fix formatting
                 cleaned_response = clean_response(response_text)
-                    
-                print(f"Received and cleaned response from Poe API")
+                print(f"Returning cleaned response")
                 
                 return jsonify({"response": cleaned_response})
             else:
                 return jsonify({"response": "I didn't receive a proper response. Please try again."})
             
         except Exception as api_err:
-            print(f"Poe API error: {str(api_err)}")
+            print(f"=== POE API ERROR ===")
+            print(f"Error type: {type(api_err).__name__}")
+            print(f"Error message: {str(api_err)}")
             
-            # Local fallback for common employment rights questions
-            if "verbal abuse" in question.lower() or "called me" in question.lower() or "insult" in question.lower():
+            # More specific error handling
+            error_str = str(api_err).lower()
+            
+            if "404" in error_str or "not found" in error_str:
                 return jsonify({
-                    "response": "In Hong Kong, verbal abuse in the workplace may constitute harassment. "\
-                               "Under the Employment Ordinance and the Sex Discrimination Ordinance, employees are "\
-                               "protected from harassment and discriminatory treatment. "\
-                               "\n\nSteps you can take:\n"\
-                               "1. Document all incidents with dates, times, and witnesses\n"\
-                               "2. Report the behavior to HR or management\n"\
-                               "3. File a complaint with the Equal Opportunities Commission if appropriate\n"\
-                               "4. Consider consulting with a labor lawyer for specific advice"
-                })
-                
-            return jsonify({
-                "response": f"I encountered an error when trying to get a response from my knowledge base. "\
-                           f"As a general guide, the Hong Kong Employment Ordinance covers your basic rights "\
-                           f"including contracts, wages, leave, and protection from unfair dismissal. "\
-                           f"For specific legal advice, please consult a qualified lawyer."
-            })
+                    "error": f"Bot '{POE_BOT_NAME}' not found. Please verify:\n"
+                            f"1. Bot name is exactly correct: '{POE_BOT_NAME}'\n"
+                            f"2. Bot exists in your Poe account\n"
+                            f"3. Bot is published/active\n"
+                            f"4. API key has permission to access this bot"
+                }), 404
+            elif "401" in error_str or "unauthorized" in error_str:
+                return jsonify({
+                    "error": "API key is invalid or expired. Please check your POE_API_KEY."
+                }), 401
+            elif "403" in error_str or "forbidden" in error_str:
+                return jsonify({
+                    "error": "API key doesn't have permission to access this bot."
+                }), 403
+            else:
+                return jsonify({
+                    "error": f"Poe API error: {str(api_err)}"
+                }), 500
             
     except Exception as e:
-        # Log any other errors
-        print(f"Error in /ask: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        print(f"=== GENERAL ERROR ===")
+        print(f"Error: {str(e)}")
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     import os
-    # Use PORT environment variable for Railway, fallback to 8888 for local development
     port = int(os.environ.get('PORT', 8888))
-    # Use 0.0.0.0 to accept external connections, localhost only works locally
     host = '0.0.0.0' if 'PORT' in os.environ else 'localhost'
-    debug = 'PORT' not in os.environ  # Debug mode only when running locally
+    debug = 'PORT' not in os.environ
     
     app.run(debug=debug, host=host, port=port)
