@@ -29,8 +29,9 @@ def clean_response(text):
 
 @app.route('/')
 def home():
-    """Render the main chat interface"""
-    return render_template('index.html')
+# Read the HTML file directly from root directory
+with open('index.html', 'r') as f:
+    return f.read()
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
